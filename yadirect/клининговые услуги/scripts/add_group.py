@@ -13,6 +13,11 @@ ap.add_argument('--keywords', default='заказать уборку и клин
 ap.add_argument('--dlink', default='заказать-уборку')                # отображаемая ссылка (≤20 знаков)
 ap.add_argument('--src', default='716527410_new.xls')                # исходная выгрузка (в import/)
 ap.add_argument('--dst', default='716527410_v2.xls')                 # результат (в import/), не перезаписывается без --force
+ap.add_argument('--ads', default='ads.md')                           # файл с объявлениями: от D или абсолютный путь
+ap.add_argument('--kwfile', default=None)                            # файл с фразами (абсолютный путь); по умолчанию <keywords>/keywords.txt
+ap.add_argument('--url', default=None)                               # посадочная страница группы (по умолчанию — из шаблона)
+ap.add_argument('--region', default=None)                            # регион группы (по умолчанию — из шаблона)
+ap.add_argument('--exclude', default=None)                           # regex: фразы, которые не брать в группу
 ap.add_argument('--force', action='store_true')
 A = ap.parse_args()
 
@@ -24,7 +29,7 @@ assert len(A.dlink) <= 20, 'отображаемая ссылка длиннее
 assert A.force or not os.path.exists(DST), DST + ' уже есть (--force, чтобы перезаписать)'
 
 # 1. тексты К1–К3
-md = open(D + 'ads.md', encoding='utf-8').read().split('\n')
+md = open(os.path.join(D, A.ads), encoding='utf-8').read().split('\n')
 s = next(i for i, l in enumerate(md) if l.startswith(SECTION))
 e = next((i for i, l in enumerate(md) if l.startswith('## ') and i > s), len(md))
 B, cur, mode = {}, None, None
@@ -41,7 +46,12 @@ for k, v in B.items():
     assert all(len(h) <= 56 for h in v['h']) and all(len(t) <= 81 for t in v['t']), k
 
 # 2. фразы
-kw = [l.split('\t')[0].strip() for l in open(D + A.keywords + '/keywords.txt', encoding='utf-8').read().split('\n')[1:] if l.strip()]
+kw = [l.split('\t')[0].strip() for l in open(A.kwfile or D + A.keywords + '/keywords.txt', encoding='utf-8').read().split('\n')[1:] if l.strip()]
+if A.exclude:
+    dropped = [k for k in kw if re.search(A.exclude, k)]
+    kw = [k for k in kw if k not in dropped]
+    print('исключено фраз:', len(dropped), dropped)
+assert len(kw) == len(set(kw)), 'дубли фраз'
 
 # 3. шаблон
 rb = xlrd.open_workbook(SRC, formatting_info=True)
@@ -53,6 +63,8 @@ assert not any(rs.cell_value(r, 3) == GROUP for r in range(11, rs.nrows)), 'гр
 group_no = str(int(max(float(rs.cell_value(r, 4)) for r in range(11, rs.nrows))) + 1)
 t0 = first[ad_ids[0]]
 link, dlink, org, region = (rs.cell_value(t0, c) for c in (46, 47, 49, 48))
+link = A.url or link
+region = A.region or region
 dlink = A.dlink  # своя отображаемая ссылка группы, не из шаблона
 
 wb = copy(rb)
