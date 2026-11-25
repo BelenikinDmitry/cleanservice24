@@ -18,12 +18,13 @@ ap.add_argument('--kwfile', default=None)                            # файл 
 ap.add_argument('--url', default=None)                               # посадочная страница группы (по умолчанию — из шаблона)
 ap.add_argument('--region', default=None)                            # регион группы (по умолчанию — из шаблона)
 ap.add_argument('--exclude', default=None)                           # regex: фразы, которые не брать в группу
+ap.add_argument('--template', default='Клининг услуги')                # группа-образец в выгрузке: из неё берутся изображения, ссылка, регион, организация
 ap.add_argument('--force', action='store_true')
 A = ap.parse_args()
 
 D = '/home/lordvoldemort/cleanservice24/yadirect/клининговые услуги/'
 SRC, DST = D + 'import/' + A.src, D + 'import/' + A.dst
-GROUP, TEMPLATE, SECTION = A.group, 'Клининг услуги', A.section
+GROUP, TEMPLATE, SECTION = A.group, A.template, A.section
 import os
 assert len(A.dlink) <= 20, 'отображаемая ссылка длиннее 20 знаков'
 assert A.force or not os.path.exists(DST), DST + ' уже есть (--force, чтобы перезаписать)'
